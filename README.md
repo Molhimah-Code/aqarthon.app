@@ -177,6 +177,6 @@ For questions or issues with the CI/CD pipeline:
 
 ## 🔄 Pipeline Status
 
-[![CI/CD Pipeline](https://github.com/your-username/aqarthon.app/workflows/CI/CD%20Pipeline%20-%20Staging%20to%20Production/badge.svg)](https://github.com/your-username/aqarthon.app/actions)
+[![CI/CD Pipeline](https://github.com/Molhimah-Code/aqarthon.app/workflows/CI/CD%20Pipeline%20-%20Staging%20to%20Production/badge.svg)](https://github.com/Molhimah-Code/aqarthon.app/actions)
 
-[![PR Checks](https://github.com/your-username/aqarthon.app/workflows/Pull%20Request%20Checks/badge.svg)](https://github.com/your-username/aqarthon.app/actions)
+[![PR Checks](https://github.com/Molhimah-Code/aqarthon.app/workflows/Pull%20Request%20Checks/badge.svg)](https://github.com/Molhimah-Code/aqarthon.app/actions)
