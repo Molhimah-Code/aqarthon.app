@@ -1,0 +1,219 @@
+name: CI/CD Pipeline - Staging to Production
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - develop
+  pull_request:
+    branches:
+      - main
+      - staging
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Build and Test Job
+  build-and-test:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for better commit info
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Build application
+        run: npm run build
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Commit Information
+        run: |
+          echo "=== COMMIT INFORMATION ==="
+          echo "Commit SHA: ${{ github.sha }}"
+          echo "Commit Author: ${{ github.actor }}"
+          echo "Commit Message: ${{ github.event.head_commit.message }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "========================="
+
+  # Staging Deployment Job
+  deploy-staging:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/develop'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Staging
+        run: |
+          echo "🚀 Deploying to Staging Environment"
+          echo "Image: ${{ needs.build-and-test.outputs.image-tag }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Message: ${{ github.event.head_commit.message }}"
+          
+          # Add your staging deployment commands here
+          # Example: kubectl apply -f k8s/staging/
+          # Example: aws ecs update-service --cluster staging --service app --force-new-deployment
+
+      - name: Run Staging Tests
+        run: |
+          echo "🧪 Running staging environment tests"
+          # Add staging-specific tests here
+          # Example: npm run test:staging
+
+      - name: Notify Staging Deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            Staging Deployment ${{ job.status }}!
+            Author: ${{ github.actor }}
+            Commit: ${{ github.sha }}
+            Message: ${{ github.event.head_commit.message }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Production Deployment Job (Manual Approval Required)
+  deploy-production:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Pre-deployment Checks
+        run: |
+          echo "🔍 Running pre-deployment checks"
+          echo "Deploying to Production Environment"
+          echo "Image: ${{ needs.build-and-test.outputs.image-tag }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Message: ${{ github.event.head_commit.message }}"
+          
+          # Add production readiness checks
+          # Example: security scans, performance tests, etc.
+
+      - name: Deploy to Production
+        run: |
+          echo "🚀 Deploying to Production Environment"
+          echo "Image: ${{ needs.build-and-test.outputs.image-tag }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Message: ${{ github.event.head_commit.message }}"
+          
+          # Add your production deployment commands here
+          # Example: kubectl apply -f k8s/production/
+          # Example: aws ecs update-service --cluster production --service app --force-new-deployment
+
+      - name: Post-deployment Verification
+        run: |
+          echo "✅ Running post-deployment verification"
+          # Add health checks and smoke tests
+          # Example: curl -f https://your-app.com/health
+
+      - name: Notify Production Deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            Production Deployment ${{ job.status }}!
+            Author: ${{ github.actor }}
+            Commit: ${{ github.sha }}
+            Message: ${{ github.event.head_commit.message }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Security and Quality Checks
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security audit
+        run: npm audit --audit-level moderate
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # Notification Job
+  notify-team:
+    needs: [build-and-test, deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify Team
+        run: |
+          echo "📢 Pipeline Status Notification"
+          echo "Build Status: ${{ needs.build-and-test.result }}"
+          echo "Staging Status: ${{ needs.deploy-staging.result }}"
+          echo "Production Status: ${{ needs.deploy-production.result }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Commit: ${{ github.sha }}"

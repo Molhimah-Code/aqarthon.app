@@ -1,0 +1,138 @@
+name: Manual Approval Workflow
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline - Staging to Production"]
+    types: [requested]
+
+jobs:
+  # Manual Approval for Production
+  production-approval:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    environment: production-approval
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get Workflow Run Information
+        id: workflow-info
+        run: |
+          echo "=== WORKFLOW RUN INFORMATION ==="
+          echo "Workflow Run ID: ${{ github.event.workflow_run.id }}"
+          echo "Workflow Run URL: ${{ github.event.workflow_run.html_url }}"
+          echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Triggered by: ${{ github.event.workflow_run.triggering_actor }}"
+          echo "Status: ${{ github.event.workflow_run.conclusion }}"
+          echo "================================"
+
+      - name: Create Deployment Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueBody = `🚀 Production Deployment Request
+            
+            **Workflow Run:** [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})
+            **Branch:** \`${{ github.event.workflow_run.head_branch }}\`
+            **Commit:** \`${{ github.event.workflow_run.head_sha }}\`
+            **Triggered by:** @${{ github.event.workflow_run.triggering_actor }}
+            **Status:** ✅ Ready for Production
+            
+            ## Deployment Checklist
+            - [ ] Code review completed
+            - [ ] All tests passed
+            - [ ] Security scan passed
+            - [ ] Staging deployment successful
+            - [ ] Performance tests passed
+            - [ ] Database migrations ready (if applicable)
+            - [ ] Rollback plan prepared
+            
+            ## Approvers Required
+            - [ ] @developer1 (Lead Developer)
+            - [ ] @developer2 (Senior Developer)  
+            - [ ] @developer3 (DevOps Engineer)
+            
+            ---
+            **Note:** This deployment will be automatically approved once all required approvers have checked their boxes.`;
+            
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚀 Production Deployment - ${{ github.event.workflow_run.head_sha }}`,
+              body: issueBody,
+              labels: ['deployment', 'production', 'pending-approval']
+            });
+            
+            console.log(`Created deployment issue: ${issue.number}`);
+
+      - name: Notify Team for Approval
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "🚀 Production Deployment Ready for Approval",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚀 Production Deployment Ready"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:* `${{ github.event.workflow_run.head_branch }}`"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:* `${{ github.event.workflow_run.head_sha }}`"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Triggered by:* @${{ github.event.workflow_run.triggering_actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:* <${{ github.event.workflow_run.html_url }}|View Details>"
+                    }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "✅ Approve Deployment"
+                      },
+                      "style": "primary",
+                      "url": "${{ github.event.workflow_run.html_url }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Auto-deploy after approval
+  auto-deploy-production:
+    needs: production-approval
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to Production
+        run: |
+          echo "🚀 Auto-deploying to production after approval"
+          echo "Workflow Run: ${{ github.event.workflow_run.id }}"
+          echo "Commit: ${{ github.event.workflow_run.head_sha }}"
+          echo "Approved by: ${{ github.actor }}"
+          
+          # Add your production deployment commands here
+          # This will run automatically after manual approval

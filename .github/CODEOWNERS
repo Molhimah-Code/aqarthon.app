@@ -1,0 +1,45 @@
+# Global code owners - all team members
+* @Zoheir-molhimah @Naif-Molhimah @tec
+
+# Critical configuration files require all team members
+/.github/ @Zoheir-molhimah @Naif-Molhimah @tec
+/package.json @Zoheir-molhimah @Naif-Molhimah @tec
+/package-lock.json @Zoheir-molhimah @Naif-Molhimah @tec
+/yarn.lock @Zoheir-molhimah @Naif-Molhimah @tec
+
+# CI/CD and Infrastructure files
+/.actions/ @Zoheir-molhimah @tec
+/k8s/ @Zoheir-molhimah @tec
+/docker/ @Zoheir-molhimah @tec
+/Dockerfile @Zoheir-molhimah @tec
+/docker-compose.yml @Zoheir-molhimah @tec
+
+# Frontend code
+/src/ @Zoheir-molhimah @Naif-Molhimah
+/public/ @Zoheir-molhimah @Naif-Molhimah
+/components/ @Zoheir-molhimah @Naif-Molhimah
+/pages/ @Zoheir-molhimah @Naif-Molhimah
+/styles/ @Zoheir-molhimah @Naif-Molhimah
+
+# Backend code
+/api/ @Naif-Molhimah @tec
+/server/ @Naif-Molhimah @tec
+/routes/ @Naif-Molhimah @tec
+/middleware/ @Naif-Molhimah @tec
+/models/ @Naif-Molhimah @tec
+
+# Database and migrations
+/migrations/ @Naif-Molhimah @tec
+/schema/ @Naif-Molhimah @tec
+
+# Tests
+/tests/ @Zoheir-molhimah @Naif-Molhimah @tec
+/__tests__/ @Zoheir-molhimah @Naif-Molhimah @tec
+*.test.js @Zoheir-molhimah @Naif-Molhimah @tec
+*.test.ts @Zoheir-molhimah @Naif-Molhimah @tec
+*.spec.js @Zoheir-molhimah @Naif-Molhimah @tec
+*.spec.ts @Zoheir-molhimah @Naif-Molhimah @tec
+
+# Documentation
+/README.md @Zoheir-molhimah @Naif-Molhimah @tec
+/docs/ @Zoheir-molhimah @Naif-Molhimah @tec
